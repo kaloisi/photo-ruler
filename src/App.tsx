@@ -1,6 +1,6 @@
-import { Box, createTheme, FormGroup, Slider, TextField, ThemeProvider } from '@mui/material';
+import { Box, Button, createTheme, FormGroup, TextField, ThemeProvider, styled } from '@mui/material';
 import './App.css'
-import React, { type JSX } from 'react';
+import React from 'react';
 
 const myTheme = createTheme({
   palette: {
@@ -62,6 +62,18 @@ interface AppState {
   isDragging: boolean
 }
 
+const VisuallyHiddenInput = styled('input')({
+  clip: 'rect(0 0 0 0)',
+  clipPath: 'inset(50%)',
+  height: 1,
+  overflow: 'hidden',
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  whiteSpace: 'nowrap',
+  width: 1,
+});
+
 class App extends React.Component<AppProps, AppState> {
   constructor(props: AppProps) {
     super(props)
@@ -69,7 +81,7 @@ class App extends React.Component<AppProps, AppState> {
       isDragging: false,
       updateRuler: true,
       scaleInFeet: 20,
-      url: "/plot.png",
+      url: "/floorplan.png",
       ruler: new Line(new Point(0,0), new Point(0, 100)),
       scale: new Line(new Point(0,0), new Point(100, 100)),
       dragLine: new Line(new Point(0,0), new Point(100, 0)),
@@ -137,36 +149,62 @@ class App extends React.Component<AppProps, AppState> {
     )
   }
 
-  updateScaleInFeet(e: React.ChangeEvent<HTMLInputElement>) {
+  updateScaleInFeet(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     let newValue = e.target.value
     this.setState({
       scaleInFeet: parseFloat(newValue)
     })
   }
   
+  setFile(file: FileList | null) {
+    console.log(file)
+    if (file != null && file.length > 0) {
+      this.setState({
+        url: URL.createObjectURL(file[0])
+      })
+    }
+  }
+
+  renderSvg() {
+    return (
+        <svg width={1526} height={1526}
+            onMouseDown={(e) => this.recordClick(e)}
+            onMouseMove={(e) => this.mouseMove(e)}
+            onMouseUp={() => this.saveChange()}
+            >
+              <image href={this.state.url} width='1536' />
+              {this.state.isDragging && this.renderLine(this.state.dragLine, 'red')}
+              {!this.state.isDragging && this.renderLine(this.state.ruler, 'blue')}
+              {!this.state.isDragging && this.renderLine(this.state.scale, 'green')}
+          </svg>
+    )
+  }
 
   render() {
     return (<>
     <ThemeProvider theme={myTheme}>
       <Box sx={{ flexGrow: 1 }}>
-      <FormGroup>
-          <Slider aria-label="Image Scale" value={10} />
-          <TextField value={this.state.url}/>
-          <TextField value={this.state.scaleInFeet} onChange={(e) => this.updateScaleInFeet(e)}/>
+        <FormGroup>
+          <TextField 
+            label="Scale"
+            value={this.state.scaleInFeet} 
+            onChange={(e) => this.updateScaleInFeet(e)}/>
+          <Button
+            component="label"
+            role={undefined}
+            tabIndex={-1}
+            variant="contained">
+            Upload File
+            <VisuallyHiddenInput
+              type="file"
+              onChange={(e) => this.setFile(e.target.files)}
+            />
+        </Button>
         </FormGroup>
       </Box>
 
         <div>
-            <svg width={1526} height={1526}
-              onMouseDown={(e) => this.recordClick(e)}
-              onMouseMove={(e) => this.mouseMove(e)}
-              onMouseUp={(e) => this.saveChange()}
-              >
-                <image href={this.state.url} width='1536' />
-                {this.state.isDragging && this.renderLine(this.state.dragLine, 'red')}
-                {!this.state.isDragging && this.renderLine(this.state.ruler, 'blue')}
-                {!this.state.isDragging && this.renderLine(this.state.scale, 'green')}
-            </svg>
+            {this.state.url && this.renderSvg()}
         </div>
       </ThemeProvider>
     </>)
