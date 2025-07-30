@@ -1,53 +1,10 @@
-import { Box, Button, createTheme, FormGroup, TextField, ThemeProvider, styled } from '@mui/material';
+import { Box, Button, FormGroup, TextField, styled } from '@mui/material';
 import './App.css'
 import React from 'react';
+import Line from './Line'
+import Point from './Point'
 
-const myTheme = createTheme({
-  palette: {
-    mode: 'dark',
-  },
-});
 
-class Line {
-  start : Point
-  end : Point
-  constructor(start: Point, end: Point) {
-    this.start = start
-    this.end = end
-  }
-
-  toPath() : string {
-    return "M" + this.start.x + " " + this.start.y + " L" + this.end.x + " " + this.end.y
-  }
-
-  getLineLengthInPixels() : number {
-    let h = Math.abs(this.start.y - this.end.y)
-    let w = Math.abs(this.start.x - this.end.x)
-    return Math.round(Math.sqrt(Math.pow(h,2) + Math.pow(w,2)))
-  }
-
-  getMidPoint() : Point {
-    return new Point(
-      this.start.x + (this.end.x - this.start.x)/2,
-      this.start.y + (this.end.y - this.start.y)/2
-    )
-  }
-
-  getLineLengthInFeet(ruler: Line, inFeet: number) : number {
-    let pixPerFoot = ruler.getLineLengthInPixels() / inFeet
-    return Math.round(this.getLineLengthInPixels() / pixPerFoot)
-  }
-}
-
-class Point {
-  x : number 
-  y : number
-
-  constructor(x: number, y: number) {
-    this.x = x
-    this.y = y
-  }
-}
 
 interface AppProps {
 }
@@ -182,7 +139,6 @@ class App extends React.Component<AppProps, AppState> {
 
   render() {
     return (<>
-    <ThemeProvider theme={myTheme}>
       <Box sx={{ flexGrow: 1 }}>
         <FormGroup>
           <TextField 
@@ -202,11 +158,9 @@ class App extends React.Component<AppProps, AppState> {
         </Button>
         </FormGroup>
       </Box>
-
         <div>
             {this.state.url && this.renderSvg()}
         </div>
-      </ThemeProvider>
     </>)
   }
 }
