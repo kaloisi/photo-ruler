@@ -2,13 +2,17 @@ import Point from './Point'
 
 
 class Line {
-    start : Point
+      start : Point
       end : Point
-      constructor(start: Point, end: Point) {
+      name : string
+
+      constructor(start: Point, end: Point, name : string = "Line") {
         this.start = start
         this.end = end
+        this.name = name
       }
     
+
       toPath() : string {
         return "M" + this.start.x + " " + this.start.y + " L" + this.end.x + " " + this.end.y
       }
@@ -29,6 +33,10 @@ class Line {
       getLineLengthInFeet(ruler: Line, inFeet: number) : number {
         let pixPerFoot = ruler.getLineLengthInPixels() / inFeet
         return Math.round(this.getLineLengthInPixels() / pixPerFoot)
+      }
+
+      getLineLabel(ruler: Line, inFeet: number, isDragLine: boolean = false) : string {
+        return(isDragLine ? '' : (this.name + ' ')) + this.getLineLengthInFeet(ruler, inFeet)
       }
 }
 
