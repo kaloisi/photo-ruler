@@ -194,12 +194,6 @@ class App extends React.Component<AppProps, AppState> {
     })
   }
 
-  layout(e : React.SyntheticEvent<HTMLImageElement>) {
-    const width = e.target.width.baseVal.value;
-    const height = e.target.height.baseVal.value;
-    console.log('SVG image width:', width, 'height:', height, e);
-  }
-
   renderSvg() {
     return (
         <svg width={1024} height={1024}
@@ -207,7 +201,7 @@ class App extends React.Component<AppProps, AppState> {
             onMouseMove={(e) => this.mouseMove(e)}
             onMouseUp={() => this.saveLine()}
             >
-              <image href={this.state.url} opacity={this.state.backgroundOpacity / 100} onLoad={(e) => this.layout(e)}/>
+              <image href={this.state.url} opacity={this.state.backgroundOpacity / 100} />
 
               {this.renderLine(this.state.ruler, 'gray', 'ruler')}
               {this.renderLines()}
