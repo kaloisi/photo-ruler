@@ -95,7 +95,7 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  openMenu(e: FormEvent<HTMLLabelElement>) {
+  openMenu(_: FormEvent<HTMLLabelElement>) {
     //console.log("openMenu called with", e)
     this.setState({ showDrawer: true })
   }
