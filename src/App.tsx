@@ -17,9 +17,11 @@ interface AppState {
   lines: Line[],
   dragLine: Line,
   isDragging: boolean,
-  showDrawer: boolean
+  showDrawer: boolean,
+  focus: Line | null
 }
 
+const NO_LINE = new Line(new Point(-200,-200), new Point(0, 0), 'No Line');
 
 class App extends React.Component<AppProps, AppState> {
   constructor(props: AppProps) {
@@ -30,16 +32,17 @@ class App extends React.Component<AppProps, AppState> {
       scaleInFeet: 20,
       backgroundOpacity: 33,
       url: "/floorplan.png",
-      ruler: new Line(new Point(0,0), new Point(0, 100), 'ruler'),
+      ruler: NO_LINE,
       lines: [],
-      dragLine: new Line(new Point(0,0), new Point(100, 0), ''),
-      showDrawer: true
+      dragLine: NO_LINE,
+      showDrawer: true,
+      focus: null
     }
   }
   
   mouseMove(e : React.MouseEvent) {
     if (this.state.isDragging) {
-      console.log("Recorded", e)
+      //console.log("Recorded", e)
       this.setState({
         dragLine: new Line(
           this.state.dragLine?.start,
@@ -65,7 +68,13 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   saveLine() {
-    if (this.state.updateRuler) {
+    // cancel if its too small
+    if(!this.state.dragLine.hasValidLength()) {
+      this.setState({ 
+        isDragging:false,
+        dragLine: NO_LINE
+      })
+    } else if (this.state.updateRuler) {
       this.setState({ 
         isDragging:false,
         ruler: this.state.dragLine,
@@ -73,8 +82,9 @@ class App extends React.Component<AppProps, AppState> {
       })
     } else {
       this.setState({ 
-        isDragging:false,
+        isDragging: false,
         lines: this.state.lines.concat(this.state.dragLine),
+        dragLine: NO_LINE
       })
     }
   }
@@ -87,10 +97,10 @@ class App extends React.Component<AppProps, AppState> {
   }
   
   setBackground(file: FileList | null) {
-    console.log(file)
     if (file != null && file.length > 0) {
+      let url = URL.createObjectURL(file[0])
       this.setState({
-        url: URL.createObjectURL(file[0])
+        url: url
       })
     }
   }
@@ -151,8 +161,19 @@ class App extends React.Component<AppProps, AppState> {
         onUpload={(fileList) => this.setBackground(fileList)}
         onUpdateRuler={() => this.resetRuler()}
         onOpacityChange={(newOpacity) => this.setState({ backgroundOpacity: newOpacity })}
+        onLineSplit={(line) => this.splitLine(line)}
+        onLineFocus={(line) => this.setState({ focus: line })}
       />
     );
+  }
+
+  splitLine(line: Line): void {
+    const results = this.state.lines.filter((l) => l !== line);
+    const splitLines = line.split(results);
+    console.log("Splitting line", line, "into", splitLines);
+    this.setState({
+      lines: results.concat(splitLines)
+    })
   }
 
   render() {
@@ -173,15 +194,21 @@ class App extends React.Component<AppProps, AppState> {
     })
   }
 
+  layout(e : React.SyntheticEvent<HTMLImageElement>) {
+    const width = e.target.width.baseVal.value;
+    const height = e.target.height.baseVal.value;
+    console.log('SVG image width:', width, 'height:', height, e);
+  }
+
   renderSvg() {
     return (
-        <svg width={1526} height={1526}
+        <svg width={1024} height={1024}
             onMouseDown={(e) => this.startDrawing(e)}
             onMouseMove={(e) => this.mouseMove(e)}
             onMouseUp={() => this.saveLine()}
             >
-              <image href={this.state.url} width='1536' opacity={this.state.backgroundOpacity / 100}/>
-              
+              <image href={this.state.url} opacity={this.state.backgroundOpacity / 100} onLoad={(e) => this.layout(e)}/>
+
               {this.renderLine(this.state.ruler, 'gray', 'ruler')}
               {this.renderLines()}
               {this.state.isDragging && this.renderLine(this.state.dragLine, 'red', 'dragLine')}
@@ -190,6 +217,8 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   renderLine(line : Line, color: string, index: string) {
+    if (line == NO_LINE) return (<></>)
+
     let path = line.toPath()
     let midPoint = line.getMidPoint()
     let textStyle = {
@@ -197,12 +226,14 @@ class App extends React.Component<AppProps, AppState> {
         fontSize: 24
     }
     let opacity = line !== this.state.dragLine && this.state.isDragging ? 0.33 : 1.0;
-
+    
+    let strokeWidth = this.state.focus === null ?  5 : 
+                        this.state.focus === line ? 8 : 1;
     return (
       <g key={"line" + index}>
         <path style={{
           stroke: color,
-          strokeWidth: 5,
+          strokeWidth: strokeWidth,
           opacity: opacity
         }} d={path}/>
         <text style={textStyle}

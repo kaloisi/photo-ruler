@@ -3,9 +3,11 @@ import {  Drawer , TextField, Button, styled, Stack, Slider } from '@mui/materia
 import { List, ListItem } from '@mui/material';
 import Line from './Line'
 import DeleteIcon from '@mui/icons-material/Delete';
+import ContentCutIcon from '@mui/icons-material/ContentCut';
 import WallpaperIcon from '@mui/icons-material/Wallpaper';
 import DesignServicesIcon from '@mui/icons-material/DesignServices';
 import Border from './Border';
+
 
 type AppDrawerProps = {
     scaleInFeet: number;
@@ -17,10 +19,12 @@ type AppDrawerProps = {
     width: number;
     onLineNameChange?: (line: Line, newName: string) => void;
     onLineDelete?: (line: Line) => void;
+    onLineSplit?: (line: Line) => void;
     onUpload?: (fileList: FileList | null) => void;
     onScaleChange?: (newScale: number) => void;
     onOpacityChange?: (newOpacity: number) => void;
     onUpdateRuler?: () => void;
+    onLineFocus?: (line: Line | null) => void;
 };
 
 type AppDrawerState = {
@@ -70,7 +74,7 @@ class AppDrawer extends React.Component<AppDrawerProps, AppDrawerState> {
                             startIcon={<DesignServicesIcon />}
                             variant="contained"
                             onClick={() => this.props.onUpdateRuler?.()}>
-                            Draw Scale Line
+                            Draw Ruler
                         </Button>
                     </Border>
                     
@@ -96,6 +100,19 @@ class AppDrawer extends React.Component<AppDrawerProps, AppDrawerState> {
         );
     }
 
+    hasInterections(line : Line) : boolean {
+        for (const next of this.props.lines) {
+            if (line == next) continue;
+
+            const intersection = line.getIntersection(next);
+            if (intersection != null) {
+                console.log(`Found intersection between ${next.name} and ${line.name} at `, intersection);
+                return true;
+            }
+        }
+        return false
+    }
+
     renderItems() {
         return (
             <Border title='Lines'>
@@ -105,7 +122,10 @@ class AppDrawer extends React.Component<AppDrawerProps, AppDrawerState> {
                         <TextField
                             value={line.name}
                             onChange={(e) => this.props.onLineNameChange?.(line, e.target.value)}
+                            onFocus={() => this.props.onLineFocus?.(line)}
+                            onBlur={() => this.props.onLineFocus?.(null)}
                         />
+                        <Button onClick={() => this.props.onLineSplit?.(line)} disabled={!this.hasInterections(line)}><ContentCutIcon /></Button>
                         <Button onClick={() => this.props.onLineDelete?.(line)}><DeleteIcon /></Button>
                     </ListItem>
                     ))}
