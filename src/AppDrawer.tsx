@@ -10,7 +10,7 @@ import Border from './Border';
 
 
 type AppDrawerProps = {
-    scaleInFeet: number;
+    scaleInInches: number;
     backgroundOpacity: number;
     headerText?: string;
     open: boolean;
@@ -26,6 +26,37 @@ type AppDrawerProps = {
     onUpdateRuler?: () => void;
     onLineFocus?: (line: Line | null) => void;
 };
+
+// Parse feet'inches" format (e.g., "10'3\"" or "10'" or "10'3") to total inches
+function parseFeetInches(value: string): number | null {
+    const trimmed = value.trim();
+
+    // Match patterns like: 10'3", 10', 10'3, 10, etc.
+    const match = trimmed.match(/^(\d+)(?:'(\d*)(?:")?)?$/);
+    if (match) {
+        const feet = parseInt(match[1], 10) || 0;
+        const inches = parseInt(match[2], 10) || 0;
+        return feet * 12 + inches;
+    }
+
+    // Try parsing as just a number (interpreted as feet)
+    const num = parseFloat(trimmed);
+    if (!isNaN(num)) {
+        return Math.round(num * 12);
+    }
+
+    return null;
+}
+
+// Format total inches as feet'inches" (e.g., 123 -> "10'3\"")
+function formatFeetInches(totalInches: number): string {
+    const feet = Math.floor(totalInches / 12);
+    const inches = totalInches % 12;
+    if (inches === 0) {
+        return `${feet}'`;
+    }
+    return `${feet}'${inches}"`;
+}
 
 type AppDrawerState = {
 }
@@ -78,13 +109,18 @@ class AppDrawer extends React.Component<AppDrawerProps, AppDrawerState> {
                         </Button>
                     </Border>
                     
-                    <Border title="Scale in feet">
+                    <Border title="Ruler length (e.g., 10'3&quot;)">
                         <TextField
                             variant='standard'
-                            type="number"
-                            InputProps={{ inputProps: { min: 1, step: 1 } }}
-                            value={this.props.scaleInFeet}
-                            onChange={(e) => this.props.onScaleChange?.(parseFloat(e.target.value))}
+                            type="text"
+                            placeholder="10'3&quot;"
+                            value={formatFeetInches(this.props.scaleInInches)}
+                            onChange={(e) => {
+                                const inches = parseFeetInches(e.target.value);
+                                if (inches !== null && inches > 0) {
+                                    this.props.onScaleChange?.(inches);
+                                }
+                            }}
                         />
                     </Border>
 
