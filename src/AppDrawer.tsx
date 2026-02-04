@@ -59,6 +59,7 @@ function formatFeetInches(totalInches: number): string {
 }
 
 type AppDrawerState = {
+    scaleInput: string;
 }
 
 const VisuallyHiddenInput = styled('input')({
@@ -75,7 +76,34 @@ const VisuallyHiddenInput = styled('input')({
 
 
 class AppDrawer extends React.Component<AppDrawerProps, AppDrawerState> {
-    
+    constructor(props: AppDrawerProps) {
+        super(props);
+        this.state = {
+            scaleInput: formatFeetInches(props.scaleInInches)
+        };
+    }
+
+    componentDidUpdate(prevProps: AppDrawerProps) {
+        // Update local state when prop changes from parent (but not while user is typing)
+        if (prevProps.scaleInInches !== this.props.scaleInInches) {
+            const currentParsed = parseFeetInches(this.state.scaleInput);
+            if (currentParsed !== this.props.scaleInInches) {
+                this.setState({ scaleInput: formatFeetInches(this.props.scaleInInches) });
+            }
+        }
+    }
+
+    handleScaleBlur = () => {
+        const inches = parseFeetInches(this.state.scaleInput);
+        if (inches !== null && inches > 0) {
+            this.props.onScaleChange?.(inches);
+            this.setState({ scaleInput: formatFeetInches(inches) });
+        } else {
+            // Reset to current valid value if input is invalid
+            this.setState({ scaleInput: formatFeetInches(this.props.scaleInInches) });
+        }
+    };
+
     render() {
         return (
             <Drawer anchor="left" open={this.props.open} onClose={() => this.props.onClose()} >
@@ -114,11 +142,12 @@ class AppDrawer extends React.Component<AppDrawerProps, AppDrawerState> {
                             variant='standard'
                             type="text"
                             placeholder="10'3&quot;"
-                            value={formatFeetInches(this.props.scaleInInches)}
-                            onChange={(e) => {
-                                const inches = parseFeetInches(e.target.value);
-                                if (inches !== null && inches > 0) {
-                                    this.props.onScaleChange?.(inches);
+                            value={this.state.scaleInput}
+                            onChange={(e) => this.setState({ scaleInput: e.target.value })}
+                            onBlur={this.handleScaleBlur}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    this.handleScaleBlur();
                                 }
                             }}
                         />
