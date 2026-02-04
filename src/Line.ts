@@ -133,13 +133,24 @@ class Line {
         )
       }
     
-      getLineLengthInFeet(ruler: Line, inFeet: number) : number {
-        let pixPerFoot = ruler.getLineLengthInPixels() / inFeet
-        return Math.round(this.getLineLengthInPixels() / pixPerFoot)
+      getLineLengthInInches(ruler: Line, rulerInches: number) : number {
+        const pixPerInch = ruler.getLineLengthInPixels() / rulerInches
+        return Math.round(this.getLineLengthInPixels() / pixPerInch)
       }
 
-      getLineLabel(ruler: Line, inFeet: number, isDragLine: boolean = false) : string {
-        return(isDragLine ? '' : (this.name + ' ')) + this.getLineLengthInFeet(ruler, inFeet)
+      formatFeetInches(totalInches: number) : string {
+        const feet = Math.floor(totalInches / 12)
+        const inches = totalInches % 12
+        if (inches === 0) {
+          return `${feet}'`
+        }
+        return `${feet}'${inches}"`
+      }
+
+      getLineLabel(ruler: Line, rulerInches: number, isDragLine: boolean = false) : string {
+        const totalInches = this.getLineLengthInInches(ruler, rulerInches)
+        const formatted = this.formatFeetInches(totalInches)
+        return (isDragLine ? '' : (this.name + ' ')) + formatted
       }
 }
 

@@ -12,7 +12,7 @@ interface AppState {
   url: string,
   imageWidth: number,
   imageHeight: number,
-  scaleInFeet: number,
+  scaleInInches: number,
   backgroundOpacity: number,
   updateRuler: boolean,
   ruler: Line,
@@ -31,7 +31,7 @@ class App extends React.Component<AppProps, AppState> {
     this.state = {
       isDragging: false,
       updateRuler: true,
-      scaleInFeet: 20,
+      scaleInInches: 240,
       backgroundOpacity: 33,
       url: "/floorplan.png",
       imageWidth: 1024,
@@ -93,10 +93,9 @@ class App extends React.Component<AppProps, AppState> {
     }
   }
 
-  updateScaleInFeet(scaleInFeet : number) {
-    //console.log("Updating scale to", scaleInFeet)
+  updateScaleInInches(scaleInInches : number) {
     this.setState({
-      scaleInFeet: scaleInFeet
+      scaleInInches: scaleInInches
     })
   }
   
@@ -160,7 +159,7 @@ class App extends React.Component<AppProps, AppState> {
     return (
       <AppDrawer
         width={400}
-        scaleInFeet={this.state.scaleInFeet}
+        scaleInInches={this.state.scaleInInches}
         backgroundOpacity={this.state.backgroundOpacity}
         open={this.state.showDrawer}
         lines={this.state.lines}
@@ -168,7 +167,7 @@ class App extends React.Component<AppProps, AppState> {
         onClose={() => this.closeMenu()}
         onLineNameChange={(line, newName) => this.renameLine(line, newName)}
         onLineDelete={(line) => this.deleteLine(line)}
-        onScaleChange={(scaleInFeet) => this.updateScaleInFeet(scaleInFeet)}
+        onScaleChange={(scaleInInches) => this.updateScaleInInches(scaleInInches)}
         onUpload={(fileList) => this.setBackground(fileList)}
         onUpdateRuler={() => this.resetRuler()}
         onOpacityChange={(newOpacity) => this.setState({ backgroundOpacity: newOpacity })}
@@ -243,7 +242,7 @@ class App extends React.Component<AppProps, AppState> {
         }} d={path}/>
         <text style={textStyle}
         x={midPoint.x}
-        y={midPoint.y + 50}>{line.getLineLabel(this.state.ruler, this.state.scaleInFeet, this.state.dragLine === line)}'
+        y={midPoint.y + 50}>{line.getLineLabel(this.state.ruler, this.state.scaleInInches, this.state.dragLine === line)}
         </text>
       </g>
     )
