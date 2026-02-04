@@ -10,6 +10,8 @@ interface AppProps {}
 
 interface AppState {
   url: string,
+  imageWidth: number,
+  imageHeight: number,
   scaleInFeet: number,
   backgroundOpacity: number,
   updateRuler: boolean,
@@ -32,6 +34,8 @@ class App extends React.Component<AppProps, AppState> {
       scaleInFeet: 20,
       backgroundOpacity: 33,
       url: "/floorplan.png",
+      imageWidth: 1024,
+      imageHeight: 1024,
       ruler: NO_LINE,
       lines: [],
       dragLine: NO_LINE,
@@ -99,9 +103,16 @@ class App extends React.Component<AppProps, AppState> {
   setBackground(file: FileList | null) {
     if (file != null && file.length > 0) {
       let url = URL.createObjectURL(file[0])
-      this.setState({
-        url: url
-      })
+      // Load image to get its natural dimensions
+      const img = new Image()
+      img.onload = () => {
+        this.setState({
+          url: url,
+          imageWidth: img.naturalWidth,
+          imageHeight: img.naturalHeight
+        })
+      }
+      img.src = url
     }
   }
 
@@ -181,7 +192,7 @@ class App extends React.Component<AppProps, AppState> {
 
       { this.renderAppDrawer() }
       <Button onClick={() => this.setState({ showDrawer: true })}> <MenuOpenIcon /> Open Drawer</Button>
-      <div>
+      <div className="svg-container">
           {this.state.url && this.renderSvg()}
       </div>
     </>)
@@ -196,7 +207,7 @@ class App extends React.Component<AppProps, AppState> {
 
   renderSvg() {
     return (
-        <svg width={1024} height={1024}
+        <svg width={this.state.imageWidth} height={this.state.imageHeight}
             onMouseDown={(e) => this.startDrawing(e)}
             onMouseMove={(e) => this.mouseMove(e)}
             onMouseUp={() => this.saveLine()}

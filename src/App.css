@@ -1,8 +1,20 @@
 #root {
-  max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
   text-align: center;
+}
+
+.svg-container {
+  overflow: auto;
+  max-width: 100vw;
+  max-height: calc(100vh - 100px);
+  border: 1px solid #ccc;
+  margin-top: 1rem;
+  cursor: crosshair;
+}
+
+.svg-container svg {
+  display: block;
 }
 
 .logo {
