@@ -1,6 +1,8 @@
 # Photo Ruler
 
-A web application for measuring distances on images (such as floor plans, maps, or architectural drawings) using a virtual ruler and scale calibration.
+This application lets you measure relative distances within a photo using a custom reference ruler. For example, if you have a floor plan of your house that doesn’t include room dimensions, you can use this tool to calculate them.
+
+To do this, you upload the photo into the application and draw a ruler along a wall whose real-world length you know. In the Open Drawer popover, you then set the actual length of that ruler (for example, in feet). Once the reference distance is defined, any additional line you draw on the photo will automatically display its measured distance based on that scale.
 
 **Live Demo:** [https://kaloisi.github.io/photo-ruler/](https://kaloisi.github.io/photo-ruler/)
 
