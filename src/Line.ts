@@ -30,28 +30,46 @@ class Line {
 
       
       split(lines : Line[]) : Line[] {
-        let results : Line[] = [ this ]
-        let done = false
+        // Collect all intersection points
+        const intersectionPoints: Point[] = [];
 
-        while (!done) {
-            done = true
-            for (const line of lines) {
-              results = results.flatMap((next: Line) => {
-                console.log(next, line)
-                let intersection = next.getIntersection(line)
-                console.log("Intersection", intersection)
-                if (!intersection || intersection == null) 
-                  return [next]
-
-                return [
-                  new Line(next.start, intersection),
-                  new Line(intersection, next.end)
-                ];
-                done = false
-              });
+        for (const other of lines) {
+            const intersection = this.getIntersection(other);
+            if (intersection != null) {
+                intersectionPoints.push(intersection);
             }
         }
-        
+
+        if (intersectionPoints.length === 0) {
+            return [this];
+        }
+
+        // Sort intersection points by distance from start
+        intersectionPoints.sort((a, b) => {
+            const distA = Math.pow(a.x - this.start.x, 2) + Math.pow(a.y - this.start.y, 2);
+            const distB = Math.pow(b.x - this.start.x, 2) + Math.pow(b.y - this.start.y, 2);
+            return distA - distB;
+        });
+
+        // Create line segments between points
+        const results: Line[] = [];
+        let previousPoint = this.start;
+        const baseName = this.name;
+
+        for (let i = 0; i < intersectionPoints.length; i++) {
+            const newLine = new Line(previousPoint, intersectionPoints[i], `${baseName}.${i + 1}`);
+            if (newLine.hasValidLength()) {
+                results.push(newLine);
+            }
+            previousPoint = intersectionPoints[i];
+        }
+
+        // Add final segment
+        const finalLine = new Line(previousPoint, this.end, `${baseName}.${intersectionPoints.length + 1}`);
+        if (finalLine.hasValidLength()) {
+            results.push(finalLine);
+        }
+
         return results;
       }
 
@@ -96,6 +114,16 @@ class Line {
         )
       }
 
+      // Check if a point lies on this line segment (within a small tolerance)
+      private isPointOnSegment(point: Point, tolerance: number = 0.001) : boolean {
+        const minX = Math.min(this.start.x, this.end.x) - tolerance;
+        const maxX = Math.max(this.start.x, this.end.x) + tolerance;
+        const minY = Math.min(this.start.y, this.end.y) - tolerance;
+        const maxY = Math.max(this.start.y, this.end.y) + tolerance;
+
+        return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+      }
+
       getIntersection(line: Line) : Point | null {
         // Line AB represented as a1x + b1y = c1
         const a1 = this.end.y - this.start.y;
@@ -112,18 +140,18 @@ class Line {
         if (determinant === 0) {
             // Lines are parallel
             return null;
-        } else {
-            const x = (b2 * c1 - b1 * c2) / determinant;
-            const y = (a1 * c2 - a2 * c1) / determinant;
-
-            const box = this.getBoundingBox(line);
-            //console.log("Box", box)
-            if (x > box.start.x && x < box.end.x && y > box.start.y && y < box.end.y) {
-              return new Point(x, y);
-            } else {
-              return null
-            }
         }
+
+        const x = (b2 * c1 - b1 * c2) / determinant;
+        const y = (a1 * c2 - a2 * c1) / determinant;
+        const intersection = new Point(x, y);
+
+        // Check if intersection point lies on BOTH line segments
+        if (this.isPointOnSegment(intersection) && line.isPointOnSegment(intersection)) {
+            return intersection;
+        }
+
+        return null;
       }
       
       getMidPoint() : Point {
