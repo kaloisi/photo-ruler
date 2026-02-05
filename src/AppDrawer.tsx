@@ -75,6 +75,14 @@ const VisuallyHiddenInput = styled('input')({
   width: 1,
 });
 
+const DrawerHeader = styled('div')(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  padding: theme.spacing(0, 1),
+  ...theme.mixins.toolbar,
+  justifyContent: 'flex-end',
+}));
+
 
 class AppDrawer extends React.Component<AppDrawerProps, AppDrawerState> {
     constructor(props: AppDrawerProps) {
@@ -120,11 +128,11 @@ class AppDrawer extends React.Component<AppDrawerProps, AppDrawerState> {
                     },
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '8px' }}>
+                <DrawerHeader>
                     <IconButton onClick={() => this.props.onClose()}>
                         <ChevronLeftIcon />
                     </IconButton>
-                </div>
+                </DrawerHeader>
                 <Divider />
                 <Stack
                     direction="column"

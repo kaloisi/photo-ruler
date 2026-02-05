@@ -4,50 +4,31 @@ import React, { type FormEvent } from 'react';
 import Line from './Line'
 import Point from './Point'
 import AppDrawer from './AppDrawer';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import MenuIcon from '@mui/icons-material/Menu';
 
 const DRAWER_WIDTH = 300;
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
-}>(({ theme, open }) => ({
+}>(({ theme }) => ({
   flexGrow: 1,
   transition: theme.transitions.create('margin', {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
-  marginLeft: 0,
-  ...(open && {
-    transition: theme.transitions.create('margin', {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-    marginLeft: `${DRAWER_WIDTH}px`,
-  }),
-}));
-
-const DrawerToggle = styled('div', { shouldForwardProp: (prop) => prop !== 'open' })<{
-  open?: boolean;
-}>(({ theme, open }) => ({
-  position: 'fixed',
-  left: 0,
-  top: 0,
-  height: '100%',
-  display: 'flex',
-  alignItems: 'flex-start',
-  paddingTop: '8px',
-  zIndex: theme.zIndex.drawer - 1,
-  transition: theme.transitions.create('left', {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
-  }),
-  ...(open && {
-    left: `${DRAWER_WIDTH}px`,
-    transition: theme.transitions.create('left', {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-  }),
+  marginLeft: `-${DRAWER_WIDTH}px`,
+  variants: [
+    {
+      props: ({ open }) => open,
+      style: {
+        transition: theme.transitions.create('margin', {
+          easing: theme.transitions.easing.easeOut,
+          duration: theme.transitions.duration.enteringScreen,
+        }),
+        marginLeft: 0,
+      },
+    },
+  ],
 }));
 
 interface AppProps {}
@@ -231,26 +212,26 @@ class App extends React.Component<AppProps, AppState> {
     return (
       <Box sx={{ display: 'flex' }}>
         {this.renderAppDrawer()}
-        <DrawerToggle open={this.state.showDrawer}>
-          <IconButton
-            onClick={() => this.setState({ showDrawer: !this.state.showDrawer })}
-            sx={{
-              backgroundColor: 'background.paper',
-              border: '1px solid',
-              borderColor: 'divider',
-              borderLeft: 'none',
-              borderRadius: '0 4px 4px 0',
-              '&:hover': {
-                backgroundColor: 'action.hover',
-              },
-            }}
-          >
-            <ChevronRightIcon sx={{
-              transform: this.state.showDrawer ? 'rotate(180deg)' : 'none',
-              transition: 'transform 0.2s'
-            }} />
-          </IconButton>
-        </DrawerToggle>
+        <IconButton
+          color="inherit"
+          aria-label="open drawer"
+          onClick={() => this.setState({ showDrawer: true })}
+          sx={{
+            position: 'fixed',
+            left: 8,
+            top: 8,
+            zIndex: (theme) => theme.zIndex.drawer + 1,
+            backgroundColor: 'background.paper',
+            border: '1px solid',
+            borderColor: 'divider',
+            '&:hover': {
+              backgroundColor: 'action.hover',
+            },
+            ...(this.state.showDrawer && { display: 'none' }),
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
         <Main open={this.state.showDrawer}>
           <div className="svg-container">
             {this.state.url && this.renderSvg()}
