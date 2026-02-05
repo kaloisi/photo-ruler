@@ -1,11 +1,12 @@
 import React from 'react';
-import {  Drawer , TextField, Button, styled, Stack, Slider } from '@mui/material';
+import {  Drawer , TextField, Button, styled, Stack, Slider, IconButton, Divider } from '@mui/material';
 import { List, ListItem } from '@mui/material';
 import Line from './Line'
 import DeleteIcon from '@mui/icons-material/Delete';
 import ContentCutIcon from '@mui/icons-material/ContentCut';
 import WallpaperIcon from '@mui/icons-material/Wallpaper';
 import DesignServicesIcon from '@mui/icons-material/DesignServices';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import Border from './Border';
 
 
@@ -106,11 +107,30 @@ class AppDrawer extends React.Component<AppDrawerProps, AppDrawerState> {
 
     render() {
         return (
-            <Drawer anchor="left" open={this.props.open} onClose={() => this.props.onClose()} >
-                <Stack 
-                    direction="column" 
-                    spacing={2} 
+            <Drawer
+                variant="persistent"
+                anchor="left"
+                open={this.props.open}
+                sx={{
+                    width: this.props.width,
+                    flexShrink: 0,
+                    '& .MuiDrawer-paper': {
+                        width: this.props.width,
+                        boxSizing: 'border-box',
+                    },
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '8px' }}>
+                    <IconButton onClick={() => this.props.onClose()}>
+                        <ChevronLeftIcon />
+                    </IconButton>
+                </div>
+                <Divider />
+                <Stack
+                    direction="column"
+                    spacing={2}
                     width={this.props.width}
+                    sx={{ padding: 1 }}
                     >
                     <Border title="Actions">
                         <Button
