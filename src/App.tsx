@@ -33,6 +33,8 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
 
 interface AppProps {}
 
+type EditMode = 'none' | 'drawing' | 'movingLine' | 'movingStart' | 'movingEnd';
+
 interface AppState {
   url: string,
   imageWidth: number,
@@ -45,7 +47,10 @@ interface AppState {
   dragLine: Line,
   isDragging: boolean,
   showDrawer: boolean,
-  focus: Line | null
+  focus: Line | null,
+  editMode: EditMode,
+  editingLine: Line | null,
+  dragOffset: Point | null
 }
 
 const NO_LINE = new Line(new Point(-200,-200), new Point(0, 0), 'No Line');
@@ -65,53 +70,187 @@ class App extends React.Component<AppProps, AppState> {
       lines: [],
       dragLine: NO_LINE,
       showDrawer: true,
-      focus: null
+      focus: null,
+      editMode: 'none',
+      editingLine: null,
+      dragOffset: null
     }
   }
   
   mouseMove(e : React.MouseEvent) {
-    if (this.state.isDragging) {
-      //console.log("Recorded", e)
+    const mouseX = e.nativeEvent.offsetX;
+    const mouseY = e.nativeEvent.offsetY;
+
+    if (this.state.editMode === 'drawing') {
       this.setState({
         dragLine: new Line(
           this.state.dragLine?.start,
-          new Point(e.nativeEvent.offsetX, e.nativeEvent.offsetY),
+          new Point(mouseX, mouseY),
           this.state.dragLine.name
         )
       })
+    } else if (this.state.editMode === 'movingLine' && this.state.editingLine && this.state.dragOffset) {
+      // Move entire line - maintain the same length and angle
+      const newStart = new Point(
+        mouseX - this.state.dragOffset.x,
+        mouseY - this.state.dragOffset.y
+      );
+      const dx = this.state.editingLine.end.x - this.state.editingLine.start.x;
+      const dy = this.state.editingLine.end.y - this.state.editingLine.start.y;
+      const newEnd = new Point(newStart.x + dx, newStart.y + dy);
+
+      this.updateEditingLine(newStart, newEnd);
+    } else if (this.state.editMode === 'movingStart' && this.state.editingLine) {
+      // Move just the start point
+      const newStart = new Point(mouseX, mouseY);
+      this.updateEditingLine(newStart, this.state.editingLine.end);
+    } else if (this.state.editMode === 'movingEnd' && this.state.editingLine) {
+      // Move just the end point
+      const newEnd = new Point(mouseX, mouseY);
+      this.updateEditingLine(this.state.editingLine.start, newEnd);
     }
   }
 
+  updateEditingLine(newStart: Point, newEnd: Point) {
+    if (!this.state.editingLine) return;
+
+    const updatedLine = new Line(newStart, newEnd, this.state.editingLine.name);
+    const updatedLines = this.state.lines.map(l =>
+      l === this.state.editingLine ? updatedLine : l
+    );
+
+    this.setState({
+      lines: updatedLines,
+      editingLine: updatedLine,
+      focus: updatedLine
+    });
+  }
+
   startDrawing(e : React.MouseEvent) {
-    //console.log("Recorded", e)
+    const mouseX = e.nativeEvent.offsetX;
+    const mouseY = e.nativeEvent.offsetY;
+    const clickPoint = new Point(mouseX, mouseY);
+
+    // Check if clicking on a focused line's endpoints or body
+    if (this.state.focus) {
+      const ENDPOINT_RADIUS = 12;
+      const startDist = this.distanceToPoint(clickPoint, this.state.focus.start);
+      const endDist = this.distanceToPoint(clickPoint, this.state.focus.end);
+
+      if (startDist <= ENDPOINT_RADIUS) {
+        // Clicked on start endpoint
+        e.stopPropagation();
+        this.setState({
+          editMode: 'movingStart',
+          editingLine: this.state.focus
+        });
+        return;
+      }
+
+      if (endDist <= ENDPOINT_RADIUS) {
+        // Clicked on end endpoint
+        e.stopPropagation();
+        this.setState({
+          editMode: 'movingEnd',
+          editingLine: this.state.focus
+        });
+        return;
+      }
+
+      // Check if clicking on the line body
+      const lineDist = this.distanceToLine(clickPoint, this.state.focus);
+      if (lineDist <= 10) {
+        // Clicked on line body - start moving entire line
+        e.stopPropagation();
+        const offset = new Point(
+          mouseX - this.state.focus.start.x,
+          mouseY - this.state.focus.start.y
+        );
+        this.setState({
+          editMode: 'movingLine',
+          editingLine: this.state.focus,
+          dragOffset: offset
+        });
+        return;
+      }
+    }
+
+    // Default: start drawing a new line
     let line = new Line(
-      new Point(e.nativeEvent.offsetX, e.nativeEvent.offsetY),
-      new Point(e.nativeEvent.offsetX, e.nativeEvent.offsetY),
+      new Point(mouseX, mouseY),
+      new Point(mouseX, mouseY),
       this.state.updateRuler ? 'Ruler' : ('Line ' + (this.state.lines.length + 1))
     )
 
     this.setState({
       isDragging: true,
+      editMode: 'drawing',
       dragLine: line
     })
   }
 
+  distanceToPoint(p1: Point, p2: Point): number {
+    return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+  }
+
+  distanceToLine(point: Point, line: Line): number {
+    const A = point.x - line.start.x;
+    const B = point.y - line.start.y;
+    const C = line.end.x - line.start.x;
+    const D = line.end.y - line.start.y;
+
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    let param = -1;
+
+    if (lenSq !== 0) param = dot / lenSq;
+
+    let xx, yy;
+
+    if (param < 0) {
+      xx = line.start.x;
+      yy = line.start.y;
+    } else if (param > 1) {
+      xx = line.end.x;
+      yy = line.end.y;
+    } else {
+      xx = line.start.x + param * C;
+      yy = line.start.y + param * D;
+    }
+
+    return Math.sqrt(Math.pow(point.x - xx, 2) + Math.pow(point.y - yy, 2));
+  }
+
   saveLine() {
-    // cancel if its too small
-    if(!this.state.dragLine.hasValidLength()) {
-      this.setState({ 
-        isDragging:false,
+    // Handle different edit modes
+    if (this.state.editMode === 'movingLine' || this.state.editMode === 'movingStart' || this.state.editMode === 'movingEnd') {
+      // Finished editing - just reset edit state
+      this.setState({
+        editMode: 'none',
+        editingLine: null,
+        dragOffset: null
+      });
+      return;
+    }
+
+    // Drawing mode - save new line
+    if (!this.state.dragLine.hasValidLength()) {
+      this.setState({
+        isDragging: false,
+        editMode: 'none',
         dragLine: NO_LINE
       })
     } else if (this.state.updateRuler) {
-      this.setState({ 
-        isDragging:false,
+      this.setState({
+        isDragging: false,
+        editMode: 'none',
         ruler: this.state.dragLine,
         updateRuler: false
       })
     } else {
-      this.setState({ 
+      this.setState({
         isDragging: false,
+        editMode: 'none',
         lines: this.state.lines.concat(this.state.dragLine),
         dragLine: NO_LINE
       })
@@ -259,7 +398,7 @@ class App extends React.Component<AppProps, AppState> {
 
               {this.renderLine(this.state.ruler, 'gray', 'ruler')}
               {this.renderLines()}
-              {this.state.isDragging && this.renderLine(this.state.dragLine, 'red', 'dragLine')}
+              {this.state.editMode === 'drawing' && this.renderLine(this.state.dragLine, 'red', 'dragLine')}
           </svg>
     )
   }
@@ -273,17 +412,48 @@ class App extends React.Component<AppProps, AppState> {
         fill: color,
         fontSize: 24
     }
-    let opacity = line !== this.state.dragLine && this.state.isDragging ? 0.33 : 1.0;
-    
-    let strokeWidth = this.state.focus === null ?  5 : 
-                        this.state.focus === line ? 8 : 1;
+    let opacity = line !== this.state.dragLine && this.state.editMode === 'drawing' ? 0.33 : 1.0;
+    const isFocused = this.state.focus === line;
+
+    let strokeWidth = this.state.focus === null ?  5 :
+                        isFocused ? 8 : 1;
+
+    const ENDPOINT_RADIUS = 8;
+
     return (
       <g key={"line" + index}>
-        <path style={{
-          stroke: color,
-          strokeWidth: strokeWidth,
-          opacity: opacity
-        }} d={path}/>
+        <path
+          style={{
+            stroke: color,
+            strokeWidth: strokeWidth,
+            opacity: opacity,
+            cursor: isFocused ? 'move' : 'default'
+          }}
+          d={path}
+        />
+        {/* Show endpoints when line is focused */}
+        {isFocused && (
+          <>
+            <circle
+              cx={line.start.x}
+              cy={line.start.y}
+              r={ENDPOINT_RADIUS}
+              fill={color}
+              stroke="white"
+              strokeWidth={2}
+              style={{ cursor: 'pointer', opacity: 0.8 }}
+            />
+            <circle
+              cx={line.end.x}
+              cy={line.end.y}
+              r={ENDPOINT_RADIUS}
+              fill={color}
+              stroke="white"
+              strokeWidth={2}
+              style={{ cursor: 'pointer', opacity: 0.8 }}
+            />
+          </>
+        )}
         <text style={textStyle}
         x={midPoint.x}
         y={midPoint.y + 50}>{line.getLineLabel(this.state.ruler, this.state.scaleInInches, this.state.dragLine === line)}
