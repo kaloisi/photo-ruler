@@ -1,10 +1,54 @@
-import { Button } from '@mui/material';
+import { Box, IconButton, styled } from '@mui/material';
 import './App.css'
 import React, { type FormEvent } from 'react';
 import Line from './Line'
 import Point from './Point'
 import AppDrawer from './AppDrawer';
-import MenuOpenIcon from '@mui/icons-material/MenuOpen';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+
+const DRAWER_WIDTH = 300;
+
+const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
+  open?: boolean;
+}>(({ theme, open }) => ({
+  flexGrow: 1,
+  transition: theme.transitions.create('margin', {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  marginLeft: 0,
+  ...(open && {
+    transition: theme.transitions.create('margin', {
+      easing: theme.transitions.easing.easeOut,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+    marginLeft: `${DRAWER_WIDTH}px`,
+  }),
+}));
+
+const DrawerToggle = styled('div', { shouldForwardProp: (prop) => prop !== 'open' })<{
+  open?: boolean;
+}>(({ theme, open }) => ({
+  position: 'fixed',
+  left: 0,
+  top: 0,
+  height: '100%',
+  display: 'flex',
+  alignItems: 'flex-start',
+  paddingTop: '8px',
+  zIndex: theme.zIndex.drawer - 1,
+  transition: theme.transitions.create('left', {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  ...(open && {
+    left: `${DRAWER_WIDTH}px`,
+    transition: theme.transitions.create('left', {
+      easing: theme.transitions.easing.easeOut,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+  }),
+}));
 
 interface AppProps {}
 
@@ -153,12 +197,9 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   renderAppDrawer() {
-    if (this.state.showDrawer === false) {
-      return (<div/>);
-    }
     return (
       <AppDrawer
-        width={400}
+        width={DRAWER_WIDTH}
         scaleInInches={this.state.scaleInInches}
         backgroundOpacity={this.state.backgroundOpacity}
         open={this.state.showDrawer}
@@ -187,14 +228,36 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   render() {
-    return (<>
-
-      { this.renderAppDrawer() }
-      <Button onClick={() => this.setState({ showDrawer: true })}> <MenuOpenIcon /> Open Drawer</Button>
-      <div className="svg-container">
-          {this.state.url && this.renderSvg()}
-      </div>
-    </>)
+    return (
+      <Box sx={{ display: 'flex' }}>
+        {this.renderAppDrawer()}
+        <DrawerToggle open={this.state.showDrawer}>
+          <IconButton
+            onClick={() => this.setState({ showDrawer: !this.state.showDrawer })}
+            sx={{
+              backgroundColor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderLeft: 'none',
+              borderRadius: '0 4px 4px 0',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+              },
+            }}
+          >
+            <ChevronRightIcon sx={{
+              transform: this.state.showDrawer ? 'rotate(180deg)' : 'none',
+              transition: 'transform 0.2s'
+            }} />
+          </IconButton>
+        </DrawerToggle>
+        <Main open={this.state.showDrawer}>
+          <div className="svg-container">
+            {this.state.url && this.renderSvg()}
+          </div>
+        </Main>
+      </Box>
+    )
   }
 
   renderLines() {
