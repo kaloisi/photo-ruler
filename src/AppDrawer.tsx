@@ -1,5 +1,5 @@
 import React from 'react';
-import {  Drawer , TextField, Button, styled, Stack, Slider, IconButton, Divider } from '@mui/material';
+import {  Drawer , TextField, Button, styled, Stack, Slider, IconButton, Divider, Box } from '@mui/material';
 import { List, ListItem } from '@mui/material';
 import Line from './Line'
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -193,33 +193,50 @@ class AppDrawer extends React.Component<AppDrawerProps, AppDrawerState> {
         );
     }
 
-    hasInterections(line : Line) : boolean {
-        for (const next of this.props.lines) {
-            if (line == next) continue;
+    hasIntersections(line : Line) : boolean {
+        for (const other of this.props.lines) {
+            if (line === other) continue;
 
-            const intersection = line.getIntersection(next);
+            const intersection = line.getIntersection(other);
             if (intersection != null) {
-                console.log(`Found intersection between ${next.name} and ${line.name} at `, intersection);
                 return true;
             }
         }
-        return false
+        return false;
     }
 
     renderItems() {
         return (
             <Border title='Lines'>
-                <List>
+                <List disablePadding>
                     {this.props.lines.map((line, index: number) => (
-                    <ListItem key={'ListItem' + index}>
-                        <TextField
-                            value={line.name}
-                            onChange={(e) => this.props.onLineNameChange?.(line, e.target.value)}
-                            onFocus={() => this.props.onLineFocus?.(line)}
-                            onBlur={() => this.props.onLineFocus?.(null)}
-                        />
-                        <Button onClick={() => this.props.onLineSplit?.(line)} disabled={!this.hasInterections(line)}><ContentCutIcon /></Button>
-                        <Button onClick={() => this.props.onLineDelete?.(line)}><DeleteIcon /></Button>
+                    <ListItem key={'ListItem' + index} disablePadding sx={{ py: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 0.5 }}>
+                            <TextField
+                                size="small"
+                                variant="standard"
+                                value={line.name}
+                                onChange={(e) => this.props.onLineNameChange?.(line, e.target.value)}
+                                onFocus={() => this.props.onLineFocus?.(line)}
+                                onBlur={() => this.props.onLineFocus?.(null)}
+                                sx={{ flexGrow: 1 }}
+                            />
+                            <IconButton
+                                size="small"
+                                onClick={() => this.props.onLineSplit?.(line)}
+                                disabled={!this.hasIntersections(line)}
+                                title="Split at intersections"
+                            >
+                                <ContentCutIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                                size="small"
+                                onClick={() => this.props.onLineDelete?.(line)}
+                                title="Delete line"
+                            >
+                                <DeleteIcon fontSize="small" />
+                            </IconButton>
+                        </Box>
                     </ListItem>
                     ))}
                 </List>

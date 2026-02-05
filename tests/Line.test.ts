@@ -23,7 +23,7 @@ describe('Line', () => {
     const topRight = new Point(100, 0);
     const bottomLeft = new Point(0, 100);
     const bottomRight = new Point(100, 100);
-    
+
     const line = new Line(topLeft, bottomRight);
     const line2 = new Line(topRight, bottomLeft);
 
@@ -31,7 +31,7 @@ describe('Line', () => {
     console.log("Split result:", split);
     expect(split.length).toBe(2);
     expect(split).toEqual(
-            [new Line(topLeft, new Point(50, 50)),
-            new Line(new Point(50, 50), bottomRight)]);
+            [new Line(topLeft, new Point(50, 50), 'Line.1'),
+            new Line(new Point(50, 50), bottomRight, 'Line.2')]);
   });
 });
