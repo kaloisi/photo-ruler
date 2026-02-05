@@ -173,6 +173,9 @@ class App extends React.Component<AppProps, AppState> {
         });
         return;
       }
+
+      // Clicked outside the focused line - clear focus
+      this.setState({ focus: null });
     }
 
     // Default: start drawing a new line
@@ -185,7 +188,8 @@ class App extends React.Component<AppProps, AppState> {
     this.setState({
       isDragging: true,
       editMode: 'drawing',
-      dragLine: line
+      dragLine: line,
+      focus: null
     })
   }
 
