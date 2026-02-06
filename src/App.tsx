@@ -3,10 +3,12 @@ import './App.css'
 import React, { type FormEvent } from 'react';
 import Line from './Line'
 import Point from './Point'
+import Polygon from './Polygon'
 import AppDrawer from './AppDrawer';
 import MenuIcon from '@mui/icons-material/Menu';
 
 const DRAWER_WIDTH = 300;
+const SNAP_DISTANCE = 15;
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
@@ -33,7 +35,7 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
 
 interface AppProps {}
 
-type EditMode = 'none' | 'drawing' | 'movingLine' | 'movingStart' | 'movingEnd';
+type EditMode = 'none' | 'drawing' | 'movingLine' | 'movingStart' | 'movingEnd' | 'movingPolygon';
 
 interface AppState {
   url: string,
@@ -51,6 +53,7 @@ interface AppState {
   focus: Line | null,
   editMode: EditMode,
   editingLine: Line | null,
+  editingPolygon: Polygon | null,
   dragOffset: Point | null
 }
 
@@ -75,6 +78,7 @@ class App extends React.Component<AppProps, AppState> {
       focus: null,
       editMode: 'none',
       editingLine: null,
+      editingPolygon: null,
       dragOffset: null
     }
   }
@@ -110,16 +114,77 @@ class App extends React.Component<AppProps, AppState> {
       // Move just the end point
       const newEnd = new Point(mouseX, mouseY);
       this.updateEditingLine(this.state.editingLine.start, newEnd);
+    } else if (this.state.editMode === 'movingPolygon' && this.state.editingPolygon && this.state.dragOffset) {
+      // Move entire polygon
+      const currentCentroid = this.state.editingPolygon.getCentroid();
+      const newCentroidX = mouseX - this.state.dragOffset.x;
+      const newCentroidY = mouseY - this.state.dragOffset.y;
+      const dx = newCentroidX - currentCentroid.x;
+      const dy = newCentroidY - currentCentroid.y;
+
+      // Move all lines in the polygon
+      const movedPolygon = this.state.editingPolygon.moveBy(dx, dy);
+
+      // Update state with moved lines
+      const updatedLines = this.state.lines.map(line => {
+        const polygonLineIndex = this.state.editingPolygon!.lines.findIndex(pl => pl === line);
+        if (polygonLineIndex !== -1) {
+          return movedPolygon.lines[polygonLineIndex];
+        }
+        return line;
+      });
+
+      this.setState({
+        lines: updatedLines,
+        editingPolygon: movedPolygon
+      });
     }
   }
 
   updateEditingLine(newStart: Point, newEnd: Point) {
     if (!this.state.editingLine) return;
 
-    const updatedLine = new Line(newStart, newEnd, this.state.editingLine.name);
-    const updatedLines = this.state.lines.map(l =>
-      l === this.state.editingLine ? updatedLine : l
-    );
+    const oldLine = this.state.editingLine;
+    const updatedLine = new Line(newStart, newEnd, oldLine.name);
+
+    // Find lines connected to the moved endpoints and update them too
+    let updatedLines = this.state.lines.map(l => {
+      if (l === oldLine) return updatedLine;
+
+      // Check if this line shares an endpoint with the moved line
+      let lineStart = l.start;
+      let lineEnd = l.end;
+      let needsUpdate = false;
+
+      // If we moved the start point
+      if (this.state.editMode === 'movingStart' || this.state.editMode === 'movingLine') {
+        if (this.distanceToPoint(l.start, oldLine.start) < SNAP_DISTANCE) {
+          lineStart = newStart;
+          needsUpdate = true;
+        }
+        if (this.distanceToPoint(l.end, oldLine.start) < SNAP_DISTANCE) {
+          lineEnd = newStart;
+          needsUpdate = true;
+        }
+      }
+
+      // If we moved the end point
+      if (this.state.editMode === 'movingEnd' || this.state.editMode === 'movingLine') {
+        if (this.distanceToPoint(l.start, oldLine.end) < SNAP_DISTANCE) {
+          lineStart = newEnd;
+          needsUpdate = true;
+        }
+        if (this.distanceToPoint(l.end, oldLine.end) < SNAP_DISTANCE) {
+          lineEnd = newEnd;
+          needsUpdate = true;
+        }
+      }
+
+      if (needsUpdate) {
+        return new Line(lineStart, lineEnd, l.name);
+      }
+      return l;
+    });
 
     this.setState({
       lines: updatedLines,
@@ -180,6 +245,29 @@ class App extends React.Component<AppProps, AppState> {
       this.setState({ focus: null });
     }
 
+    // Check if clicking on a line that's part of a polygon
+    const polygons = Polygon.detectPolygons(this.state.lines);
+    for (const polygon of polygons) {
+      for (const line of polygon.lines) {
+        const lineDist = this.distanceToLine(clickPoint, line);
+        if (lineDist <= 10) {
+          // Clicked on a polygon line - start moving entire polygon
+          e.stopPropagation();
+          const offset = new Point(
+            mouseX - polygon.getCentroid().x,
+            mouseY - polygon.getCentroid().y
+          );
+          this.setState({
+            editMode: 'movingPolygon',
+            editingPolygon: polygon,
+            dragOffset: offset,
+            focus: line
+          });
+          return;
+        }
+      }
+    }
+
     // Default: start drawing a new line
     let line = new Line(
       new Point(mouseX, mouseY),
@@ -197,6 +285,59 @@ class App extends React.Component<AppProps, AppState> {
 
   distanceToPoint(p1: Point, p2: Point): number {
     return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+  }
+
+  // Find the nearest existing endpoint within snap distance
+  findSnapPoint(point: Point, excludeLine?: Line): Point | null {
+    let nearestPoint: Point | null = null;
+    let nearestDist = SNAP_DISTANCE;
+
+    // Check all line endpoints
+    for (const line of this.state.lines) {
+      if (excludeLine && line === excludeLine) continue;
+
+      const startDist = this.distanceToPoint(point, line.start);
+      const endDist = this.distanceToPoint(point, line.end);
+
+      if (startDist < nearestDist) {
+        nearestDist = startDist;
+        nearestPoint = line.start;
+      }
+      if (endDist < nearestDist) {
+        nearestDist = endDist;
+        nearestPoint = line.end;
+      }
+    }
+
+    // Also check ruler endpoints
+    if (this.state.ruler !== NO_LINE) {
+      const rulerStartDist = this.distanceToPoint(point, this.state.ruler.start);
+      const rulerEndDist = this.distanceToPoint(point, this.state.ruler.end);
+      if (rulerStartDist < nearestDist) {
+        nearestDist = rulerStartDist;
+        nearestPoint = this.state.ruler.start;
+      }
+      if (rulerEndDist < nearestDist) {
+        nearestDist = rulerEndDist;
+        nearestPoint = this.state.ruler.end;
+      }
+    }
+
+    return nearestPoint;
+  }
+
+  // Find all lines that share an endpoint with the given point
+  findConnectedLines(point: Point, excludeLine?: Line): Line[] {
+    const connected: Line[] = [];
+    for (const line of this.state.lines) {
+      if (excludeLine && line === excludeLine) continue;
+
+      if (this.distanceToPoint(point, line.start) < SNAP_DISTANCE ||
+          this.distanceToPoint(point, line.end) < SNAP_DISTANCE) {
+        connected.push(line);
+      }
+    }
+    return connected;
   }
 
   distanceToLine(point: Point, line: Line): number {
@@ -230,7 +371,31 @@ class App extends React.Component<AppProps, AppState> {
   saveLine() {
     // Handle different edit modes
     if (this.state.editMode === 'movingLine' || this.state.editMode === 'movingStart' || this.state.editMode === 'movingEnd') {
-      // Finished editing - just reset edit state
+      // Finished editing - apply snapping to endpoints
+      if (this.state.editingLine) {
+        const snapStart = this.findSnapPoint(this.state.editingLine.start, this.state.editingLine);
+        const snapEnd = this.findSnapPoint(this.state.editingLine.end, this.state.editingLine);
+
+        if (snapStart || snapEnd) {
+          const newStart = snapStart || this.state.editingLine.start;
+          const newEnd = snapEnd || this.state.editingLine.end;
+          const snappedLine = new Line(newStart, newEnd, this.state.editingLine.name);
+
+          const updatedLines = this.state.lines.map(l =>
+            l === this.state.editingLine ? snappedLine : l
+          );
+
+          this.setState({
+            lines: updatedLines,
+            editMode: 'none',
+            editingLine: null,
+            dragOffset: null,
+            focus: snappedLine
+          });
+          return;
+        }
+      }
+
       this.setState({
         editMode: 'none',
         editingLine: null,
@@ -239,7 +404,16 @@ class App extends React.Component<AppProps, AppState> {
       return;
     }
 
-    // Drawing mode - save new line
+    if (this.state.editMode === 'movingPolygon') {
+      this.setState({
+        editMode: 'none',
+        editingPolygon: null,
+        dragOffset: null
+      });
+      return;
+    }
+
+    // Drawing mode - save new line with snapping
     if (!this.state.dragLine.hasValidLength()) {
       this.setState({
         isDragging: false,
@@ -247,17 +421,35 @@ class App extends React.Component<AppProps, AppState> {
         dragLine: NO_LINE
       })
     } else if (this.state.updateRuler) {
+      // Apply snapping to ruler
+      const snapStart = this.findSnapPoint(this.state.dragLine.start);
+      const snapEnd = this.findSnapPoint(this.state.dragLine.end);
+      const snappedRuler = new Line(
+        snapStart || this.state.dragLine.start,
+        snapEnd || this.state.dragLine.end,
+        this.state.dragLine.name
+      );
+
       this.setState({
         isDragging: false,
         editMode: 'none',
-        ruler: this.state.dragLine,
+        ruler: snappedRuler,
         updateRuler: false
       })
     } else {
+      // Apply snapping to new line
+      const snapStart = this.findSnapPoint(this.state.dragLine.start);
+      const snapEnd = this.findSnapPoint(this.state.dragLine.end);
+      const snappedLine = new Line(
+        snapStart || this.state.dragLine.start,
+        snapEnd || this.state.dragLine.end,
+        this.state.dragLine.name
+      );
+
       this.setState({
         isDragging: false,
         editMode: 'none',
-        lines: this.state.lines.concat(this.state.dragLine),
+        lines: this.state.lines.concat(snappedLine),
         dragLine: NO_LINE
       })
     }
@@ -395,6 +587,51 @@ class App extends React.Component<AppProps, AppState> {
     })
   }
 
+  renderPolygons() {
+    const polygons = Polygon.detectPolygons(this.state.lines);
+
+    return polygons.map((polygon, index) => {
+      const centroid = polygon.getCentroid();
+      const areaText = polygon.formatArea(this.state.ruler, this.state.scaleInInches);
+      const isEditing = this.state.editingPolygon === polygon;
+
+      // Create polygon path for fill
+      const pathPoints = polygon.vertices.map((v, i) =>
+        (i === 0 ? 'M' : 'L') + v.x + ' ' + v.y
+      ).join(' ') + ' Z';
+
+      return (
+        <g key={'polygon' + index}>
+          {/* Semi-transparent fill for the polygon */}
+          <path
+            d={pathPoints}
+            fill="rgba(100, 149, 237, 0.2)"
+            stroke="none"
+            style={{
+              cursor: 'move',
+              opacity: isEditing ? 0.4 : 0.2
+            }}
+          />
+          {/* Area label at centroid */}
+          <text
+            x={centroid.x}
+            y={centroid.y}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            style={{
+              fill: 'darkblue',
+              fontSize: 18,
+              fontWeight: 'bold',
+              pointerEvents: 'none'
+            }}
+          >
+            {areaText}
+          </text>
+        </g>
+      );
+    });
+  }
+
   renderSvg() {
     const scaledWidth = this.state.imageWidth * this.state.imageScale;
     const scaledHeight = this.state.imageHeight * this.state.imageScale;
@@ -412,6 +649,8 @@ class App extends React.Component<AppProps, AppState> {
                 height={scaledHeight}
               />
 
+              {/* Render polygons first (behind lines) */}
+              {this.renderPolygons()}
               {this.renderLine(this.state.ruler, 'gray', 'ruler')}
               {this.renderLines()}
               {this.state.editMode === 'drawing' && this.renderLine(this.state.dragLine, 'red', 'dragLine')}
