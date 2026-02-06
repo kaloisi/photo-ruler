@@ -175,7 +175,10 @@ class Line {
         return `${feet}'${inches}"`
       }
 
-      getLineLabel(ruler: Line, rulerInches: number, isDragLine: boolean = false) : string {
+      getLineLabel(ruler: Line, rulerInches: number, isDragLine: boolean = false, isEditMode: boolean = false) : string {
+        if (isEditMode) {
+          return this.name;
+        }
         const totalInches = this.getLineLengthInInches(ruler, rulerInches)
         const formatted = this.formatFeetInches(totalInches)
         return (isDragLine ? '' : (this.name + ' ')) + formatted
