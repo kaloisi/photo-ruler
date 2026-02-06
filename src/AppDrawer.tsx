@@ -13,6 +13,7 @@ import Border from './Border';
 type AppDrawerProps = {
     scaleInInches: number;
     backgroundOpacity: number;
+    imageScale: number;
     headerText?: string;
     open: boolean;
     onClose: () => void;
@@ -24,6 +25,7 @@ type AppDrawerProps = {
     onUpload?: (fileList: FileList | null) => void;
     onScaleChange?: (newScale: number) => void;
     onOpacityChange?: (newOpacity: number) => void;
+    onImageScaleChange?: (newScale: number) => void;
     onUpdateRuler?: () => void;
     onLineFocus?: (line: Line | null) => void;
 };
@@ -182,10 +184,21 @@ class AppDrawer extends React.Component<AppDrawerProps, AppDrawerState> {
                     </Border>
 
                     <Border title="Background Opacity">
-                        <Slider 
-                            aria-label="Background Opacity" 
-                            value={this.props.backgroundOpacity} 
+                        <Slider
+                            aria-label="Background Opacity"
+                            value={this.props.backgroundOpacity}
                             onChange={(_, newValue: number) => this.props.onOpacityChange?.(newValue)} />
+                    </Border>
+
+                    <Border title={`Image Scale (${Math.round(this.props.imageScale * 100)}%)`}>
+                        <Slider
+                            aria-label="Image Scale"
+                            value={this.props.imageScale}
+                            min={0.2}
+                            max={5}
+                            step={0.1}
+                            onChange={(_, newValue: number) => this.props.onImageScaleChange?.(newValue)}
+                        />
                     </Border>
                     {this.props.lines.length > 0 && this.renderItems()}                    
                 </Stack>

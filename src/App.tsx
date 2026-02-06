@@ -39,6 +39,7 @@ interface AppState {
   url: string,
   imageWidth: number,
   imageHeight: number,
+  imageScale: number,
   scaleInInches: number,
   backgroundOpacity: number,
   updateRuler: boolean,
@@ -66,6 +67,7 @@ class App extends React.Component<AppProps, AppState> {
       url: "/floorplan.png",
       imageWidth: 1024,
       imageHeight: 1024,
+      imageScale: 1,
       ruler: NO_LINE,
       lines: [],
       dragLine: NO_LINE,
@@ -326,6 +328,7 @@ class App extends React.Component<AppProps, AppState> {
         width={DRAWER_WIDTH}
         scaleInInches={this.state.scaleInInches}
         backgroundOpacity={this.state.backgroundOpacity}
+        imageScale={this.state.imageScale}
         open={this.state.showDrawer}
         lines={this.state.lines}
         /** actions */
@@ -336,6 +339,7 @@ class App extends React.Component<AppProps, AppState> {
         onUpload={(fileList) => this.setBackground(fileList)}
         onUpdateRuler={() => this.resetRuler()}
         onOpacityChange={(newOpacity) => this.setState({ backgroundOpacity: newOpacity })}
+        onImageScaleChange={(newScale) => this.setState({ imageScale: newScale })}
         onLineSplit={(line) => this.splitLine(line)}
         onLineFocus={(line) => this.setState({ focus: line })}
       />
@@ -392,13 +396,21 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   renderSvg() {
+    const scaledWidth = this.state.imageWidth * this.state.imageScale;
+    const scaledHeight = this.state.imageHeight * this.state.imageScale;
+
     return (
-        <svg width={this.state.imageWidth} height={this.state.imageHeight}
+        <svg width={scaledWidth} height={scaledHeight}
             onMouseDown={(e) => this.startDrawing(e)}
             onMouseMove={(e) => this.mouseMove(e)}
             onMouseUp={() => this.saveLine()}
             >
-              <image href={this.state.url} opacity={this.state.backgroundOpacity / 100} />
+              <image
+                href={this.state.url}
+                opacity={this.state.backgroundOpacity / 100}
+                width={scaledWidth}
+                height={scaledHeight}
+              />
 
               {this.renderLine(this.state.ruler, 'gray', 'ruler')}
               {this.renderLines()}
