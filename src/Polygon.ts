@@ -92,7 +92,7 @@ class Polygon {
     // Format area as string
     formatArea(ruler: Line, rulerInches: number): string {
         const sqFt = this.getAreaInSquareFeet(ruler, rulerInches);
-        return `${sqFt.toFixed(1)} sq ft`;
+        return `${Math.round(sqFt)} sq ft`;
     }
 
     // Check if this polygon contains a specific line

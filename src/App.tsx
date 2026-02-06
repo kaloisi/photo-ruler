@@ -54,7 +54,9 @@ interface AppState {
   editMode: EditMode,
   editingLine: Line | null,
   editingPolygon: Polygon | null,
-  dragOffset: Point | null
+  dragOffset: Point | null,
+  editingLineName: Line | null,
+  editingLineNameValue: string
 }
 
 const NO_LINE = new Line(new Point(-200,-200), new Point(0, 0), 'No Line');
@@ -79,7 +81,9 @@ class App extends React.Component<AppProps, AppState> {
       editMode: 'none',
       editingLine: null,
       editingPolygon: null,
-      dragOffset: null
+      dragOffset: null,
+      editingLineName: null,
+      editingLineNameValue: ''
     }
   }
   
@@ -686,12 +690,14 @@ class App extends React.Component<AppProps, AppState> {
       angle += 180;
     }
 
-    // Get label text
-    const labelText = line.getLineLabel(this.state.ruler, this.state.scaleInInches, this.state.dragLine === line);
+    // Get label text - only show name when focused (in edit mode)
+    const isEditingName = this.state.editingLineName === line;
+    const labelText = line.getLineLabel(this.state.ruler, this.state.scaleInInches, this.state.dragLine === line, isFocused);
 
     // Estimate label dimensions (approximate based on font size and text length)
     const charWidth = 10;
-    const labelWidth = labelText.length * charWidth + 16; // padding
+    const displayText = isEditingName ? this.state.editingLineNameValue : labelText;
+    const labelWidth = Math.max(displayText.length * charWidth + 16, 60); // padding, min width
     const labelHeight = 24;
     const cornerRadius = 6;
 
@@ -752,18 +758,79 @@ class App extends React.Component<AppProps, AppState> {
             stroke={color}
             strokeWidth={1.5}
             opacity={opacity}
+            style={{ cursor: isFocused ? 'text' : 'default' }}
+            onClick={(e) => {
+              if (isFocused && !isEditingName) {
+                e.stopPropagation();
+                this.setState({
+                  editingLineName: line,
+                  editingLineNameValue: line.name
+                });
+              }
+            }}
           />
-          {/* Label text */}
-          <text
-            style={textStyle}
-            x={0}
-            y={0}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            opacity={opacity}
-          >
-            {labelText}
-          </text>
+          {/* Label text or input */}
+          {isEditingName ? (
+            <foreignObject
+              x={-labelWidth / 2}
+              y={-labelHeight / 2}
+              width={labelWidth}
+              height={labelHeight}
+            >
+              <input
+                type="text"
+                value={this.state.editingLineNameValue}
+                onChange={(e) => this.setState({ editingLineNameValue: e.target.value })}
+                onBlur={() => {
+                  this.renameLine(line, this.state.editingLineNameValue);
+                  this.setState({ editingLineName: null, editingLineNameValue: '' });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    this.renameLine(line, this.state.editingLineNameValue);
+                    this.setState({ editingLineName: null, editingLineNameValue: '' });
+                  } else if (e.key === 'Escape') {
+                    this.setState({ editingLineName: null, editingLineNameValue: '' });
+                  }
+                }}
+                autoFocus
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  background: 'transparent',
+                  textAlign: 'center',
+                  fontSize: 18,
+                  fontFamily: 'Arial, sans-serif',
+                  fontWeight: 500,
+                  color: color,
+                  outline: 'none',
+                  padding: 0
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+              />
+            </foreignObject>
+          ) : (
+            <text
+              style={{...textStyle, cursor: isFocused ? 'text' : 'default'}}
+              x={0}
+              y={0}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              opacity={opacity}
+              onClick={(e) => {
+                if (isFocused) {
+                  e.stopPropagation();
+                  this.setState({
+                    editingLineName: line,
+                    editingLineNameValue: line.name
+                  });
+                }
+              }}
+            >
+              {labelText}
+            </text>
+          )}
         </g>
 
         {/* Show endpoints when line is focused */}
