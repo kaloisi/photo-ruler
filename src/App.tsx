@@ -657,7 +657,7 @@ class App extends React.Component<AppProps, AppState> {
               {this.renderPolygons()}
               {this.renderLine(this.state.ruler, 'gray', 'ruler')}
               {this.renderLines()}
-              {this.state.editMode === 'drawing' && this.renderLine(this.state.dragLine, 'red', 'dragLine')}
+              {this.state.editMode === 'drawing' && this.state.dragLine.hasValidLength() && this.renderLine(this.state.dragLine, 'red', 'dragLine')}
           </svg>
     )
   }
