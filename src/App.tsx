@@ -661,11 +661,12 @@ class App extends React.Component<AppProps, AppState> {
   renderLine(line : Line, color: string, index: string) {
     if (line == NO_LINE) return (<></>)
 
-    let path = line.toPath()
     let midPoint = line.getMidPoint()
     let textStyle = {
         fill: color,
-        fontSize: 24
+        fontSize: 18,
+        fontFamily: 'Arial, sans-serif',
+        fontWeight: 500
     }
     let opacity = line !== this.state.dragLine && this.state.editMode === 'drawing' ? 0.33 : 1.0;
     const isFocused = this.state.focus === line;
@@ -675,17 +676,96 @@ class App extends React.Component<AppProps, AppState> {
 
     const ENDPOINT_RADIUS = 8;
 
+    // Calculate line angle in degrees
+    const dx = line.end.x - line.start.x;
+    const dy = line.end.y - line.start.y;
+    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    // Flip text if it would be upside down
+    if (angle > 90 || angle < -90) {
+      angle += 180;
+    }
+
+    // Get label text
+    const labelText = line.getLineLabel(this.state.ruler, this.state.scaleInInches, this.state.dragLine === line);
+
+    // Estimate label dimensions (approximate based on font size and text length)
+    const charWidth = 10;
+    const labelWidth = labelText.length * charWidth + 16; // padding
+    const labelHeight = 24;
+    const cornerRadius = 6;
+
+    // Calculate the half-width along the line direction for where line segments should stop
+    const lineLength = Math.sqrt(dx * dx + dy * dy);
+    const halfLabelWidth = labelWidth / 2 + 4; // small gap
+
+    // Calculate unit vector along the line
+    const ux = dx / lineLength;
+    const uy = dy / lineLength;
+
+    // Points where lines connect to the label rectangle
+    const labelLeftX = midPoint.x - ux * halfLabelWidth;
+    const labelLeftY = midPoint.y - uy * halfLabelWidth;
+    const labelRightX = midPoint.x + ux * halfLabelWidth;
+    const labelRightY = midPoint.y + uy * halfLabelWidth;
+
     return (
       <g key={"line" + index}>
-        <path
+        {/* First line segment: from start to label */}
+        <line
+          x1={line.start.x}
+          y1={line.start.y}
+          x2={labelLeftX}
+          y2={labelLeftY}
           style={{
             stroke: color,
             strokeWidth: strokeWidth,
             opacity: opacity,
             cursor: isFocused ? 'move' : 'default'
           }}
-          d={path}
         />
+        {/* Second line segment: from label to end */}
+        <line
+          x1={labelRightX}
+          y1={labelRightY}
+          x2={line.end.x}
+          y2={line.end.y}
+          style={{
+            stroke: color,
+            strokeWidth: strokeWidth,
+            opacity: opacity,
+            cursor: isFocused ? 'move' : 'default'
+          }}
+        />
+
+        {/* Label group with rotation */}
+        <g transform={`translate(${midPoint.x}, ${midPoint.y}) rotate(${angle})`}>
+          {/* Rounded rectangle background */}
+          <rect
+            x={-labelWidth / 2}
+            y={-labelHeight / 2}
+            width={labelWidth}
+            height={labelHeight}
+            rx={cornerRadius}
+            ry={cornerRadius}
+            fill="white"
+            stroke={color}
+            strokeWidth={1.5}
+            opacity={opacity}
+          />
+          {/* Label text */}
+          <text
+            style={textStyle}
+            x={0}
+            y={0}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            opacity={opacity}
+          >
+            {labelText}
+          </text>
+        </g>
+
         {/* Show endpoints when line is focused */}
         {isFocused && (
           <>
@@ -709,10 +789,6 @@ class App extends React.Component<AppProps, AppState> {
             />
           </>
         )}
-        <text style={textStyle}
-        x={midPoint.x}
-        y={midPoint.y + 50}>{line.getLineLabel(this.state.ruler, this.state.scaleInInches, this.state.dragLine === line)}
-        </text>
       </g>
     )
   }
